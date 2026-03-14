@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"image"
-	"image/draw"
-	"image/jpeg"
+	"html"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +20,7 @@ Usage: getty <id | url>
 
 var client = &http.Client{}
 
-func downloadJpg(url string, img chan image.Image) {
+func download(url string, file *os.File) {
 	res, err := client.Get(url)
 	if err != nil || res.StatusCode != 200 {
 		fmt.Println("Could not download the image")
@@ -29,41 +29,28 @@ func downloadJpg(url string, img chan image.Image) {
 
 	defer res.Body.Close()
 
-	data, err := jpeg.Decode(res.Body)
-	if err != nil {
-		fmt.Println("Could not decode the image")
-		os.Exit(1)
-	}
-
-	img <- data
-}
-
-func mergeImages(imageOne image.Image, imageTwo image.Image) image.Image {
-	x, y := imageOne.Bounds().Dx(), imageOne.Bounds().Dy()
-
-	rectOne := image.Rect(0, 0, x, y/5*3)
-	rectTwo := image.Rect(0, y/5*3, x, y)
-
-	newImage := image.NewRGBA(imageOne.Bounds())
-
-	draw.Draw(newImage, rectOne, imageOne, image.ZP, draw.Src)
-	draw.Draw(newImage, rectTwo, imageTwo, image.Pt(0, y/5*3), draw.Src)
-
-	return newImage
+	io.Copy(file, res.Body)
 }
 
 func getty(id string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	urlOne := fmt.Sprintf("https://media.gettyimages.com/photos/-id%s?s=2048x2048&w=5", id)
-	urlTwo := fmt.Sprintf("https://media.gettyimages.com/photos/-id%s?s=2048x2048&w=125", id)
-
-	channelOne := make(chan image.Image)
-	channelTwo := make(chan image.Image)
-	go downloadJpg(urlOne, channelOne)
-	go downloadJpg(urlTwo, channelTwo)
-
-	newImage := mergeImages(<-channelOne, <-channelTwo)
+	page := "https://www.gettyimages.com/detail/photo/-/" + id
+	req, _ := http.NewRequest("GET", page, nil)
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Request error: ", err)
+		os.Exit(1)
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	re := regexp.MustCompile(`[^"]+s=2048x2048[^"]+`)
+	urls := re.FindAllString(string(body), -1)
+	if urls == nil {
+		fmt.Println("Could not find the image")
+		os.Exit(1)
+	}
+	url := html.UnescapeString(urls[len(urls) - 1])
 
 	resultPath := fmt.Sprintf("%s.jpg", id)
 	resultFile, err := os.Create(resultPath)
@@ -72,9 +59,7 @@ func getty(id string, wg *sync.WaitGroup) {
 		os.Exit(1)
 	}
 
-	jpeg.Encode(resultFile, newImage, &jpeg.Options{
-		Quality: 100,
-	})
+	download(url, resultFile)
 	defer resultFile.Close()
 }
 
