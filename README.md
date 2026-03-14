@@ -1,6 +1,6 @@
 # Getty
 
-![Build](https://github.com/m-rots/getty/workflows/Build/badge.svg)
+[![Go](../../actions/workflows/go.yml/badge.svg)](../../actions/workflows/go.yml)
 
 A small utility to download images from gettyimages.
 - Images are locked to 2048x2048 pixels in size
@@ -27,5 +27,5 @@ Downloaded images will be placed in the current working directory with the ident
 Either download one of the binaries in the releases tab or build getty yourself.
 
 ## Build
-1. Make sure you have the latest version of [Go](https://golang.org/dl/) installed
+1. Make sure you have the latest version of [Go](//go.dev/dl/) installed
 2. Run `go build getty.go` to build the binary

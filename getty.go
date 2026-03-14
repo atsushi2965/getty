@@ -15,8 +15,7 @@ import (
 
 const usage string = `Getty ya pirate!
 
-Usage: getty <id | url>
-`
+Usage: getty <id | url>`
 
 var client = &http.Client{}
 
@@ -50,7 +49,7 @@ func getty(id string, wg *sync.WaitGroup) {
 		fmt.Println("Could not find the image")
 		os.Exit(1)
 	}
-	url := html.UnescapeString(urls[len(urls) - 1])
+	url := html.UnescapeString(urls[len(urls)-1])
 
 	resultPath := fmt.Sprintf("%s.jpg", id)
 	resultFile, err := os.Create(resultPath)
